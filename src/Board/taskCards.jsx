@@ -230,10 +230,22 @@ function TaskCard({ task, updateTasks, allMembers = [], isOverlay = false, delet
           <span className="meta_label">Due date</span>
           <strong>{formatDate(task.due_date)}</strong>
         </div>
-        <button className="icon_button" type="button" onClick={startEditing}>
-          Edit
-        </button>
-        <button className="icon_button" type="button" onClick={() => deleteTask(task.id)}>Delete Task</button>
+        {
+          task.task_assignees.length != 0
+          ?
+          <button className="icon_button" type="button" onClick={startEditing}>
+            Edit
+          </button>
+          :
+          <></>
+        }
+        {
+          task.task_assignees.length != 0
+          ?
+          <button className="icon_button" type="button" onClick={() => deleteTask(task.id)}>Delete Task</button>
+          :
+          <></>
+        }
       </div>
 
       <div className="task_footer">
@@ -250,11 +262,21 @@ function TaskCard({ task, updateTasks, allMembers = [], isOverlay = false, delet
               </span>
             ))
           ) : (
-            <span className="avatar_chip avatar_chip__empty">?</span>
+            <div>
+              {
+                task.task_assignees.length != 0
+                ?
+                <span className="avatar_chip avatar_chip__empty">
+                  ?
+                </span>
+                :
+                <></>
+              }
+            </div>
           )}
         </div>
         <span className="assignee_label">
-          {assignees.length ? `${assignees.length} teammate${assignees.length > 1 ? "s" : ""}` : "Unassigned"}
+          {task.task_assignees.length != 0 ? (assignees.length ? `${assignees.length} teammate${assignees.length > 1 ? "s" : ""}` : "Unassigned") : ""}
         </span>
       </div>
     </article>
