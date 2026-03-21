@@ -7,25 +7,26 @@ export default function useUser() {
   const [returningUser, setReturningUser] = useState(false);
 
   useEffect(() => {
-    async function init() {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        const { data, error } = await supabase.auth.signInAnonymously();
-        if (!error) setUser(data.user);
-      } else {
-        setUser(session.user);
-        setReturningUser(true);
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "INITIAL_SESSION") {
+          if (session) {
+            setUser(session.user);
+            setReturningUser(true);
+            setLoading(false);
+          } else {
+            const { data, error } = await supabase.auth.signInAnonymously();
+            if (!error) setUser(data.user);
+          }
+        } else if (event === "SIGNED_IN") {
+          setUser(session.user);
+          setLoading(false);
+        } else if (event === "SIGNED_OUT") {
+          setUser(null);
+          setLoading(false);
+        }
       }
-
-      setLoading(false);
-    }
-
-    init();
-
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-    });
+    );
 
     return () => listener.subscription.unsubscribe();
   }, []);
