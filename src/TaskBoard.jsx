@@ -324,7 +324,7 @@ function TaskBoard() {
           return (
             <div
               key={col.id}
-              className={`column ${dragOver === col.id ? "drag-over" : ""}`}
+              className={`column column-${col.id} ${dragOver === col.id ? "drag-over" : ""}`}
               onDragOver={(e) => {
                 e.preventDefault()
                 setDragOver(col.id)

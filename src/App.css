@@ -255,26 +255,57 @@ button.danger {
 }
 
 .column {
+  --accent: #64748b;
+  --tint: #f1f5f9;
   min-height: 300px;
   padding: 12px;
   border-radius: 8px;
-  background: #e9ebef;
+  background: var(--tint);
   border: 2px dashed transparent;
+  border-top: 4px solid var(--accent);
+}
+
+.column-todo {
+  --accent: #64748b;
+  --tint: #eef2f6;
+}
+
+.column-in_progress {
+  --accent: #2563eb;
+  --tint: #e6efff;
+}
+
+.column-in_review {
+  --accent: #d97706;
+  --tint: #fdf3e1;
+}
+
+.column-done {
+  --accent: #16a34a;
+  --tint: #e5f6eb;
 }
 
 .column.drag-over {
-  border-color: #4f46e5;
-  background: #e0e7ff;
+  border-color: var(--accent);
+  border-top-color: var(--accent);
+  filter: brightness(0.97);
 }
 
 .column h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 12px;
+  color: var(--accent);
 }
 
 .count {
-  margin-left: 4px;
-  color: #6b7280;
-  font-weight: normal;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .card {
