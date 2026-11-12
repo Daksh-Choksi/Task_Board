@@ -31,7 +31,6 @@ Sign in with just your name, create tasks, drag them across columns, and collabo
 ### Prerequisites
 
 - Node.js 20 or newer
-- A [Supabase](https://supabase.com) project with **Anonymous Sign-Ins** enabled (Authentication > Providers)
 
 ### 1. Install dependencies
 
