@@ -23,6 +23,12 @@ export function dueStatus(task) {
   return { text, className: "" }
 }
 
+export function dueCategory(task) {
+  const due = dueStatus(task)
+  if (!due) return "none"
+  return due.className || "later"
+}
+
 export function timeAgo(date) {
   const minutes = Math.floor((Date.now() - new Date(date)) / 60000)
   if (minutes < 1) return "just now"

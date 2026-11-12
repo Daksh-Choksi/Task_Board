@@ -3,11 +3,16 @@ import { useNavigate } from "react-router-dom"
 import { supabase } from "./db"
 import Avatar from "./Avatar"
 import TaskDetail from "./TaskDetail"
-import { COLUMNS, dueStatus } from "./utils"
+import { COLUMNS, dueCategory, dueStatus } from "./utils"
 
 const TASK_QUERY = "*, task_assignees (member:team_members (id, name, color, avatar_url)), task_labels (label:labels (id, name, color))"
 
-function TaskCard({ task, onOpen }) {
+async function currentUserId() {
+  const { data } = await supabase.auth.getSession()
+  return data.session?.user.id
+}
+
+function TaskCard({ task, shared, onOpen }) {
   const due = dueStatus(task)
 
   return (
@@ -24,6 +29,7 @@ function TaskCard({ task, onOpen }) {
           ))}
         </div>
       )}
+      {shared && <div className="shared">Assigned to you</div>}
       <p className="card-title">{task.title}</p>
       <div className="card-footer">
         <span className={`priority priority-${task.priority}`}>{task.priority}</span>
@@ -42,6 +48,8 @@ function TaskBoard() {
   const [labels, setLabels] = useState([])
   const [error, setError] = useState("")
   const [labelFilter, setLabelFilter] = useState("")
+  const [dueFilter, setDueFilter] = useState("")
+  const [priorityFilter, setPriorityFilter] = useState("")
   const [selectedId, setSelectedId] = useState(null)
   const [dragOver, setDragOver] = useState(null)
 
@@ -60,6 +68,7 @@ function TaskBoard() {
   const [labelColor, setLabelColor] = useState("#64748b")
 
   const [name, setName] = useState("")
+  const [userId, setUserId] = useState(null)
   const navigate = useNavigate()
 
   async function getTasks() {
@@ -73,13 +82,15 @@ function TaskBoard() {
   }
 
   async function getMembers() {
-    const { data, error } = await supabase.from("team_members").select("*").order("created_at")
+    const uid = await currentUserId()
+    const { data, error } = await supabase.from("team_members").select("*").eq("user_id", uid).order("created_at")
     if (error) return setError(error.message)
     setMembers(data)
   }
 
   async function getLabels() {
-    const { data, error } = await supabase.from("labels").select("*").order("name")
+    const uid = await currentUserId()
+    const { data, error } = await supabase.from("labels").select("*").eq("user_id", uid).order("name")
     if (error) return setError(error.message)
     setLabels(data)
   }
@@ -88,7 +99,9 @@ function TaskBoard() {
     async function init() {
       const { data } = await supabase.auth.getSession()
       if (!data.session) return navigate("/")
-      const { data: profile } = await supabase.from("profiles").select("name").eq("id", data.session.user.id).single()
+      const uid = data.session.user.id
+      setUserId(uid)
+      const { data: profile } = await supabase.from("profiles").select("name").eq("id", uid).single()
       if (profile) setName(profile.name)
       getTasks()
       getMembers()
@@ -145,7 +158,7 @@ function TaskBoard() {
       if (latestSearch.current !== query) return
       setSearching(false)
       if (error) return setError(error.message)
-      setSuggestions(data.filter((p) => !members.some((m) => m.name === p.name)))
+      setSuggestions(data.filter((p) => !members.some((m) => m.profile_id === p.id)))
     }, 250)
   }
 
@@ -159,7 +172,7 @@ function TaskBoard() {
     e.preventDefault()
     if (!selectedProfile) return setError("Pick a person from the list")
 
-    const { error } = await supabase.from("team_members").insert({ name: selectedProfile.name, color: memberColor })
+    const { error } = await supabase.from("team_members").insert({ name: selectedProfile.name, profile_id: selectedProfile.id, color: memberColor })
     if (error) return setError(error.message)
     setMemberName("")
     setSelectedProfile(null)
@@ -196,7 +209,18 @@ function TaskBoard() {
     navigate("/")
   }
 
-  const visibleTasks = labelFilter ? tasks.filter((t) => t.labels.some((l) => l.id === labelFilter)) : tasks
+  const visibleTasks = tasks.filter((t) =>
+    (!labelFilter || t.labels.some((l) => l.id === labelFilter)) &&
+    (!dueFilter || dueCategory(t) === dueFilter) &&
+    (!priorityFilter || t.priority === priorityFilter)
+  )
+  const hasFilters = labelFilter || dueFilter || priorityFilter
+
+  function clearFilters() {
+    setLabelFilter("")
+    setDueFilter("")
+    setPriorityFilter("")
+  }
   const selectedTask = tasks.find((t) => t.id === selectedId)
 
   return (
@@ -273,11 +297,25 @@ function TaskBoard() {
       </section>
 
       <div className="filter">
-        <span>Filter by label:</span>
+        <span>Filter:</span>
         <select value={labelFilter} onChange={(e) => setLabelFilter(e.target.value)}>
-          <option value="">All</option>
+          <option value="">All labels</option>
           {labels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
         </select>
+        <select value={dueFilter} onChange={(e) => setDueFilter(e.target.value)}>
+          <option value="">Any due date</option>
+          <option value="overdue">Overdue</option>
+          <option value="soon">Due soon (next 2 days)</option>
+          <option value="later">Plenty of time</option>
+          <option value="none">No due date</option>
+        </select>
+        <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
+          <option value="">Any priority</option>
+          <option value="high">High</option>
+          <option value="normal">Normal</option>
+          <option value="low">Low</option>
+        </select>
+        {hasFilters && <button className="secondary" onClick={clearFilters}>Clear</button>}
       </div>
 
       <main className="board">
@@ -301,7 +339,7 @@ function TaskBoard() {
             >
               <h4>{col.title} <span className="count">{columnTasks.length}</span></h4>
               {columnTasks.map((task) => (
-                <TaskCard key={task.id} task={task} onOpen={() => setSelectedId(task.id)} />
+                <TaskCard key={task.id} task={task} shared={task.user_id !== userId} onOpen={() => setSelectedId(task.id)} />
               ))}
             </div>
           )
@@ -312,6 +350,7 @@ function TaskBoard() {
         <TaskDetail
           key={selectedTask.id}
           task={selectedTask}
+          isOwner={selectedTask.user_id === userId}
           members={members}
           labels={labels}
           onClose={() => setSelectedId(null)}

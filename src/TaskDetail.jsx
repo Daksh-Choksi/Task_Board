@@ -11,7 +11,7 @@ function fetchActivity(taskId) {
   return supabase.from("task_activity_log").select("*").eq("task_id", taskId).order("created_at", { ascending: false })
 }
 
-function TaskDetail({ task, members, labels, onClose, onChange }) {
+function TaskDetail({ task, isOwner, members, labels, onClose, onChange }) {
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description || "")
   const [status, setStatus] = useState(task.status)
@@ -141,14 +141,17 @@ function TaskDetail({ task, members, labels, onClose, onChange }) {
           </div>
           <div className="row">
             <button type="submit">Save</button>
-            <button type="button" className="danger" onClick={deleteTask}>Delete task</button>
+            {isOwner && <button type="button" className="danger" onClick={deleteTask}>Delete task</button>}
           </div>
         </form>
 
         <h3>Assignees</h3>
         <div className="chips">
-          {members.length === 0 && <span className="muted">Add team members first</span>}
-          {members.map((m) => (
+          {!isOwner && task.assignees.map((m) => (
+            <span key={m.id} className="chip"><Avatar member={m} /> {m.name}</span>
+          ))}
+          {isOwner && members.length === 0 && <span className="muted">Add team members first</span>}
+          {isOwner && members.map((m) => (
             <button
               key={m.id}
               className={`chip toggle ${task.assignees.some((a) => a.id === m.id) ? "selected" : ""}`}
@@ -161,8 +164,12 @@ function TaskDetail({ task, members, labels, onClose, onChange }) {
 
         <h3>Labels</h3>
         <div className="chips">
-          {labels.length === 0 && <span className="muted">Create some labels first</span>}
-          {labels.map((l) => (
+          {!isOwner && task.labels.length === 0 && <span className="muted">No labels</span>}
+          {!isOwner && task.labels.map((l) => (
+            <span key={l.id} className="label" style={{ background: l.color }}>{l.name}</span>
+          ))}
+          {isOwner && labels.length === 0 && <span className="muted">Create some labels first</span>}
+          {isOwner && labels.map((l) => (
             <button
               key={l.id}
               className={`chip toggle ${task.labels.some((tl) => tl.id === l.id) ? "selected" : ""}`}
